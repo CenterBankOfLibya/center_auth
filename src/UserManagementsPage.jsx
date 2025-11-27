@@ -13,6 +13,8 @@ const UserManagementsPage = () => {
   const [page, setPage] = useState(10);
   const [search, setSearch] = useState('');
   const [department, setDepartment] = useState('');
+  const [management, setManagement] = useState('');
+  const [managements, setManagements] = useState([]);
   const [status, setStatus] = useState('');
   const [roles, setRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
@@ -73,14 +75,28 @@ const UserManagementsPage = () => {
     }
   };
   useEffect(() => {
+    const fetchManagements = async () => {
+      try {
+        const data = await fetchData('systems/managements?list', 'GET');
+        setManagements(Array.isArray(data) ? data : data.data || []);
+      } catch (err) {
+        console.error('Failed to fetch managements', err);
+      }
+    };
+    fetchManagements();
+  }, []);
+
+  useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
       setError(null);
       try {
-        const queryParams = new URLSearchParams();
-      
+        let query = `user-managements?per_page=${page}`;
+        if (search) query += `&filter[search]=${search}`;
+        if (management) query += `&filter[management.name]=${management}`;
+        if (status) query += `&filter[is_active]=${status}`;
 
-        const data = await fetchData(`user-managements?per_page=${page}&filter[id]=${search}`, 'GET');
+        const data = await fetchData(query, 'GET');
         setUsers(Array.isArray(data) ? data : data.data || []);
       } catch (err) {
         setError(err.message || 'Failed to fetch user managements');
@@ -94,7 +110,7 @@ const UserManagementsPage = () => {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [page, search, department, status]);
+  }, [page, search, management, status]);
 
   // Password update state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -180,7 +196,7 @@ const UserManagementsPage = () => {
       setCreateSuccess('User created successfully.');
       setCreateForm({ emp_number: '', email: '', password: '', name: '' });
       // Refresh users list
-      const data = await fetchData('user-managements', 'GET');
+      const data = await fetchData('user-managements?per_page=1000', 'GET');
       setUsers(Array.isArray(data) ? data : data.data || []);
       setShowCreateForm(false);
     } catch (err) {
@@ -386,16 +402,18 @@ const UserManagementsPage = () => {
                 </div>
                 <div className="flex gap-4">
                     <div className="w-40">
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Department</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">management</label>
                         <select 
                             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                            value={department}
-                            onChange={(e) => setDepartment(e.target.value)}
+                            value={management}
+                            onChange={(e) => setManagement(e.target.value)}
                         >
-                            <option value="">All Departments</option>
-                            <option value="IT">IT</option>
-                            <option value="Sales">Sales</option>
-                            <option value="Finance">Finance</option>
+                            <option value="">All management</option>
+                           {
+                            managements.map((management) => (
+                                <option key={management.id} value={management.name}>{management.name}</option>
+                            ))
+                           }
                         </select>
                     </div>
                     <div className="w-40">
@@ -444,19 +462,20 @@ const UserManagementsPage = () => {
         {toggleError && <div className="p-4 text-center text-red-600 bg-red-50">{toggleError}</div>}
         
         {!loading && !error && (
-            <div className=" ">
-            <table className=" w-[100vw]">
+            <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-white">
                 <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">managements</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Management Level</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Systems Access</th>
-                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
+
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><span className="">Actions</span></th>
                 </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
